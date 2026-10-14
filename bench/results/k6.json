@@ -1,0 +1,10 @@
+{
+  "tps": 1000,
+  "authorizations": 120001,
+  "p50_ms": 3.987,
+  "p95_ms": 25.655,
+  "p99_ms": 57.243,
+  "max_ms": 1744.572,
+  "checks_passed": 0.9998750010416579,
+  "dropped_iterations": 0
+}
