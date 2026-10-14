@@ -16,7 +16,7 @@ OUT=bench/results
 mkdir -p bin "$OUT/logs"
 go build -o bin/ ./cmd/ledger ./cmd/chaos
 
-db() { echo "${ADMIN/\/postgres?//$1?}"; }
+db() { echo "${ADMIN%/*}/$1?${ADMIN#*\?}"; }  # same server and options, another database
 fresh() { psql "$ADMIN" -qc "DROP DATABASE IF EXISTS $1 WITH (FORCE)" -c "CREATE DATABASE $1"; }
 
 echo "== latency: $TPS authorisations/s for $DURATION"
@@ -24,7 +24,8 @@ fresh card_ledger_bench
 bin/ledger -addr :8060 -db "$(db card_ledger_bench)" -max-conns 48 >"$OUT/logs/ledger.log" 2>&1 &
 pid=$!
 trap 'kill $pid 2>/dev/null || true' EXIT
-for _ in $(seq 1 50); do curl -sf localhost:8060/healthz >/dev/null && break; sleep 0.1; done
+for _ in $(seq 1 300); do curl -sf localhost:8060/healthz >/dev/null && break; sleep 0.1; done
+curl -sf localhost:8060/healthz >/dev/null || { echo "ledger did not start:"; cat "$OUT/logs/ledger.log"; exit 1; }
 k6 run -q -e BASE=http://localhost:8060 -e TPS="$TPS" -e DURATION="$DURATION" -e OUT="$OUT/k6.json" k6/auth-load.js >/dev/null || true
 curl -s localhost:8060/v1/eod >"$OUT/eod-after-load.json"
 kill $pid; wait $pid 2>/dev/null || true
