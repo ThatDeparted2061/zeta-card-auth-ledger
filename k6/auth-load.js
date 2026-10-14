@@ -10,7 +10,6 @@ import { check } from 'k6';
 const BASE = __ENV.BASE || 'http://localhost:8060';
 const TPS = parseInt(__ENV.TPS || '1000');
 const CARDS = parseInt(__ENV.CARDS || '2000');
-const RUN = `${Date.now()}`;
 
 export const options = {
   setupTimeout: '5m',
@@ -33,15 +32,20 @@ export const options = {
 
 const json = (key, tag) => ({ headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, tags: { op: tag } });
 
+// setup() runs once and hands its data to every VU: per-VU init code runs at
+// different moments, so a run id computed there would differ between VUs.
 export function setup() {
+  const RUN = `${Date.now()}`;
   for (let i = 0; i < CARDS; i++) {
     const card = { id: `k6-${RUN}-${i}`, credit_limit: 1e9, per_txn_limit: 50000, daily_limit: 1e9, velocity_per_min: 100000 };
     const r = http.post(`${BASE}/v1/cards`, JSON.stringify(card), json(`k6-${RUN}-card-${i}`, 'setup'));
     if (r.status !== 201) throw new Error(`card setup failed: ${r.status} ${r.body}`);
   }
+  return { run: RUN };
 }
 
-export default function () {
+export default function (data) {
+  const RUN = data.run;
   const key = `k6-${RUN}-${__VU}-${__ITER}`;
   const card = `k6-${RUN}-${Math.floor(Math.random() * CARDS)}`;
   const amount = 100 + Math.floor(Math.random() * 20000);
