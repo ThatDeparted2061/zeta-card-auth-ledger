@@ -1,0 +1,32 @@
+# docker compose up --build --abort-on-container-exit --exit-code-from k6
+# Postgres + the ledger + k6 at 1000 authorisations/s; the k6 summary prints
+# p50/p95/p99. Then: curl localhost:8060/v1/eod
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: ledger
+      POSTGRES_DB: card_ledger
+    command: ["postgres", "-c", "max_connections=200", "-c", "synchronous_commit=on"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 30
+
+  ledger:
+    build: .
+    command: ["-addr", ":8060", "-max-conns", "48"]
+    environment:
+      DATABASE_URL: postgres://postgres:ledger@postgres:5432/card_ledger?sslmode=disable
+    ports: ["8060:8060"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  k6:
+    image: grafana/k6:1.3.0
+    command: ["run", "-e", "BASE=http://ledger:8060", "-e", "TPS=${TPS:-1000}", "-e", "DURATION=${DURATION:-2m}", "-e", "OUT=/results/k6.json", "/scripts/auth-load.js"]
+    volumes:
+      - ./k6:/scripts:ro
+      - ./bench/results:/results
+    depends_on: [ledger]
