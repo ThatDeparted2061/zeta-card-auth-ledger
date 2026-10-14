@@ -10,8 +10,8 @@ type Report struct {
 	At                  time.Time `json:"at"`
 	Entries             int64     `json:"entries"`
 	Postings            int64     `json:"postings"`
-	Sum                 int64     `json:"sum_of_all_postings"`   // must be 0
-	UnbalancedEntries   int64     `json:"unbalanced_entries"`    // entries whose postings do not net to 0
+	Sum                 int64     `json:"sum_of_all_postings"` // must be 0
+	UnbalancedEntries   int64     `json:"unbalanced_entries"`  // entries whose postings do not net to 0
 	EntriesWithoutLegs  int64     `json:"entries_without_postings"`
 	AccountMismatches   int64     `json:"account_balance_mismatches"` // stored balance != sum of its postings
 	CardIdentity        int64     `json:"cards_breaking_identity"`    // available + held + posted != credit limit
